@@ -1,0 +1,2934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - Liberia High School Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the scrollbar to look cleaner */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            /* slate-300 */
+            border-radius: 4px;
+        }
+        /* Style for the active sidebar link */
+        .active-link {
+            background-color: #3b82f6;
+            /* blue-500 */
+            color: white;
+            font-weight: 600;
+            border-radius: 0.375rem;
+            /* rounded-md */
+        }
+        /* Custom size for the new large modal */
+        #gradesheet-modal .modal-content {
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        /* Styles for printing the receipt */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-receipt, #printable-receipt * {
+                visibility: visible;
+            }
+            #printable-receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-gray-800 text-white p-4 transition-transform -translate-x-full md:translate-x-0 z-50">
+        <div class="text-2xl font-bold mb-8 text-yellow-400">
+            Liberia High Admin
+        </div>
+        <nav class="space-y-2">
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150 active-link" data-content="dashboard">
+                Dashboard
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="classes">
+                Class Management
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="subjects">
+                Subject Management
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="grades">
+                Grade Management
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="students">
+                Student Management
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="teachers">
+                Teacher Management
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="finance">
+                Finance & Fees
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="schedules">
+                Schedule Management
+            </a>
+            <a href="#" class="nav-link block p-3 hover:bg-gray-700 transition duration-150" data-content="settings">
+                System Settings
+            </a>
+            <a href="#" class="block p-3 mt-8 bg-red-600 hover:bg-red-700 text-center rounded-md transition duration-150">
+                Logout
+            </a>
+        </nav>
+    </div>
+
+    <div class="md:ml-64 p-4 md:p-8 min-h-screen">
+
+        <header class="flex justify-between items-center bg-white shadow p-4 mb-6 rounded-lg md:hidden">
+            <h1 class="text-xl font-semibold">Admin Portal</h1>
+            <button id="menu-toggle" class="text-gray-800 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </header>
+
+        <main id="content-area">
+        </main>
+    </div>
+
+    <!-- In the gradesheet-modal section -->
+    <div id="gradesheet-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="gradesheet-modal-title" class="text-xl font-semibold"></h3>
+                <button onclick="document.getElementById('gradesheet-modal').classList.add('hidden')" class="text-red-600 hover:text-red-900 text-2xl font-bold">&times;</button>
+            </div>
+            <!-- Add to the gradesheet-modal section, after the table -->
+            <div class="flex justify-end mt-4">
+                <button onclick="exportGrades(document.getElementById('gs-student-name').dataset.studentId)" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Export Grades as CSV</button>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-md">
+                <p>
+                    <strong>Student:</strong> <span id="gs-student-name"></span>
+                </p>
+                <p>
+                    <strong>Class:</strong> <span id="gs-student-class"></span>
+                </p>
+                <div class="flex gap-4 mb-4">
+                    <div>
+                        <label for="gs-filter-semester" class="block text-sm font-medium text-gray-700">Filter Semester</label>
+                        <select id="gs-filter-semester" class="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" onchange="viewStudentGrades(document.getElementById('gs-student-name').dataset.studentId)">
+                            <option value="">All Semesters</option>
+                            ${semestersData.map(s => `<option value="${s.name}">${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="gs-filter-period" class="block text-sm font-medium text-gray-700">Filter Period</label>
+                        <select id="gs-filter-period" class="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" onchange="viewStudentGrades(document.getElementById('gs-student-name').dataset.studentId)">
+                            <option value="">All Periods</option>
+                            ${periodsData.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                                ${semestersData.map(s => `<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${s.name}</th>`).join('')}
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gradesheet-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+                <p id="gs-no-grades-message" class="text-center text-gray-500 mt-4 hidden">
+                    No grades recorded for this student.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div id="printable-receipt" class="p-8"></div>
+
+
+    <script>
+        const contentArea = document.getElementById('content-area');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sidebar = document.getElementById('sidebar');
+        const menuToggle = document.getElementById('menu-toggle');
+
+        // --- Local Storage Data Arrays ---
+        // --- Local Storage Data Arrays ---
+        let studentsData = JSON.parse(localStorage.getItem('students')) || [];
+        let teachersData = JSON.parse(localStorage.getItem('teachers')) || [];
+        let classesData = JSON.parse(localStorage.getItem('classes')) || [];
+        let subjectsData = JSON.parse(localStorage.getItem('subjects')) || [];
+        let feesData = JSON.parse(localStorage.getItem('fees')) || [];
+        let gradesData = JSON.parse(localStorage.getItem('grades')) || [];
+        let schedulesData = JSON.parse(localStorage.getItem('schedules')) || [];
+        let settingsData = JSON.parse(localStorage.getItem('settings')) || {
+            academicYear: '2025/2026'
+        };
+        let periodsData = JSON.parse(localStorage.getItem('periods')) || [];
+        let semestersData = JSON.parse(localStorage.getItem('semesters')) || [];
+
+        // Ensure grades have semester and period fields (migration for existing data)
+        gradesData.forEach(g => {
+            g.semester = g.semester || semestersData[0]?.name || 'Semester 1';
+            g.period = g.period || periodsData[0]?.name || 'Period 1';
+        });
+
+
+
+        // --- Data Initialization (Adds new properties to existing data) ---
+        studentsData.forEach(s => {
+            s.feeStatus = s.feeStatus || 'owing'; // Default to 'owing'
+            s.payments = s.payments || []; // Ensure payments array exists
+        });
+        classesData.forEach(c => {
+            c.tuitionFee = c.tuitionFee || 0; // Ensure tuitionFee property exists
+        });
+
+        // UPDATED: Teacher data structure initialization and migration
+        teachersData.forEach(t => {
+            // New structure properties
+            t.sponsorClass = t.sponsorClass || (t.sponsorClasses ? t.sponsorClasses[0]: '');
+            t.assignments = t.assignments || [];
+            t.salary = t.salary || 0; // NEW: Default salary
+            t.salaryPayments = t.salaryPayments || []; // NEW: Salary payments array
+
+            // Migration logic for old data structure
+            if (t.hasOwnProperty('subject') && t.subject && t.hasOwnProperty('assignedClasses')) {
+                t.assignments = t.assignedClasses.map(className => ({
+                    class: className,
+                    subject: t.subject
+                }));
+                // Remove old properties
+                delete t.subject;
+                delete t.assignedClasses;
+            }
+            if (t.hasOwnProperty('sponsorClasses')) {
+                delete t.sponsorClasses;
+            }
+        });
+
+
+        // --- Data Saving Functions ---
+        function saveStudents() {
+            localStorage.setItem('students',
+                JSON.stringify(studentsData));
+        }
+        function saveTeachers() {
+            localStorage.setItem('teachers',
+                JSON.stringify(teachersData));
+        }
+        function saveClasses() {
+            localStorage.setItem('classes',
+                JSON.stringify(classesData));
+        }
+        function saveSubjects() {
+            localStorage.setItem('subjects',
+                JSON.stringify(subjectsData));
+        }
+        function saveFees() {
+            localStorage.setItem('fees',
+                JSON.stringify(feesData));
+        }
+        function saveGrades() {
+            localStorage.setItem('grades',
+                JSON.stringify(gradesData));
+        }
+        function saveSchedules() {
+            localStorage.setItem('schedules',
+                JSON.stringify(schedulesData));
+        }
+        function saveSettings() {
+            localStorage.setItem('settings',
+                JSON.stringify(settingsData));
+        }
+
+        function savePeriods() {
+            localStorage.setItem('periods',
+                JSON.stringify(periodsData));
+        }
+        function saveSemesters() {
+            localStorage.setItem('semesters',
+                JSON.stringify(semestersData));
+        }
+
+
+        // --- Core Content Loader ---
+        function loadContent(contentId) {
+            let html = '';
+
+            switch (contentId) {
+                case 'dashboard':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Dashboard</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                    <p class="text-sm font-medium text-gray-500">Total Students</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${studentsData.length}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                    <p class="text-sm font-medium text-gray-500">Total Teachers</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${teachersData.length}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                    <p class="text-sm font-medium text-gray-500">Active Classes</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${classesData.length}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                    <p class="text-sm font-medium text-gray-500">Total Subjects</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${subjectsData.length}</p>
+                    </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+                    <p class="text-sm font-medium text-gray-500">Academic Year</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${settingsData.academicYear}</p>
+                    </div>
+
+                    <!-- In the settings section -->
+                    <div>
+                    <label for="passing-threshold" class="block text-sm font-medium text-gray-700">Passing Grade Threshold</label>
+                    <input type="number" id="passing-threshold" value="${settingsData.passingThreshold || 70}" min="0" max="100" required class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    </div>
+
+
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-cyan-500">
+                    <p class="text-sm font-medium text-gray-500">Total Grades Recorded</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${gradesData.length}</p>
+                    </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
+                    <p class="text-sm font-medium text-gray-500">Total Schedules</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${schedulesData.length}</p>
+                    </div>
+                    </div>
+                    <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">School Notices</h3>
+                    <p class="text-gray-600">Welcome to the ${settingsData.academicYear} school year! Please verify all academic structures and schedules before enrollment.</p>
+                    </div>
+                    `;
+                    break;
+                case 'grades':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Grade Management</h2>
+
+                    <!-- Semester and Period Management -->
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Manage Semesters and Periods</h3>
+                    <div class="flex gap-4 mb-4">
+                    <div>
+                    <label for="new-semester" class="block text-sm font-medium text-gray-700">Add Semester</label>
+                    <input type="text" id="new-semester" placeholder="e.g., Semester 1" class="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <button id="add-semester-btn" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Semester</button>
+                    </div>
+                    <div>
+                    <label for="new-period" class="block text-sm font-medium text-gray-700">Add Period</label>
+                    <input type="text" id="new-period" placeholder="e.g., Period 1" class="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <button id="add-period-btn" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Period</button>
+                    </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                    <div>
+                    <h4 class="text-md font-semibold mb-2">Semesters</h4>
+                    <ul id="semester-list" class="list-disc pl-5">
+                    ${semestersData.length ? semestersData.map(s => `<li>${s.name} <button onclick="deleteSemester('${s.id}')" class="text-red-600 hover:text-red-900 text-sm">Delete</button></li>`).join(''): '<li>No semesters defined.</li>'}
+                    </ul>
+                    </div>
+                    <div>
+                    <h4 class="text-md font-semibold mb-2">Periods</h4>
+                    <ul id="period-list" class="list-disc pl-5">
+                    ${periodsData.length ? periodsData.map(p => `<li>${p.name} <button onclick="deletePeriod('${p.id}')" class="text-red-600 hover:text-red-900 text-sm">Delete</button></li>`).join(''): '<li>No periods defined.</li>'}
+                    </ul>
+                    </div>
+                    </div>
+                    </div>
+
+                    <!-- Record New Grade -->
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Record a New Grade</h3>
+                    <form id="grade-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                    <label for="grade-class" class="block text-sm font-medium text-gray-700">Select Class</label>
+                    <select id="grade-class" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <option value="">-- Select Class --</option>
+                    ${classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                    </select>
+                    </div>
+                    <div>
+                    <label for="grade-student" class="block text-sm font-medium text-gray-700">Select Student</label>
+                    <select id="grade-student" required disabled class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border bg-gray-50">
+                    <option value="">-- Select Student (Choose Class First) --</option>
+                    </select>
+                    </div>
+                    <div>
+                    <label for="grade-semester" class="block text-sm font-medium text-gray-700">Select Semester</label>
+                    <select id="grade-semester" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <option value="">-- Select Semester --</option>
+                    ${semestersData.map(s => `<option value="${s.name}">${s.name}</option>`).join('')}
+                    </select>
+                    </div>
+                    <div>
+                    <label for="grade-period" class="block text-sm font-medium text-gray-700">Select Period</label>
+                    <select id="grade-period" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <option value="">-- Select Period --</option>
+                    ${periodsData.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                    </select>
+                    </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                    <div>
+                    <label for="grade-subject" class="block text-sm font-medium text-gray-700">Select Subject</label>
+                    <select id="grade-subject" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <option value="">-- Select Subject --</option>
+                    ${subjectsData.map(s => `<option value="${s.name}">${s.name}</option>`).join('')}
+                    </select>
+                    </div>
+                    <div>
+                    <label for="grade-score" class="block text-sm font-medium text-gray-700">Score (0-100)</label>
+                    <input type="number" id="grade-score" min="0" max="100" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                    <!-- In the grade recording form -->
+                    <div>
+                    <label for="grade-type" class="block text-sm font-medium text-gray-700">Grade Type</label>
+                    <select id="grade-type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    <option value="">-- Select Grade Type --</option>
+                    <option value="Exam">Exam</option>
+                    <option value="Quiz">Quiz</option>
+                    <option value="Assignment">Assignment</option>
+                    <option value="Project">Project</option>
+                    </select>
+                    </div>
+                    <div class="flex justify-end items-end">
+                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                    Record Grade
+                    </button>
+                    </div>
+                    </div>
+                    </form>
+                    </div>
+
+                    <!-- In the grades section, below the grade recording form -->
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Bulk Grade Upload</h3>
+                    <p class="text-sm text-gray-600 mb-4">Upload a CSV file with columns: studentId,subject,semester,period,score,type</p>
+                    <input type="file" id="grade-upload" accept=".csv" class="mb-4">
+                    <button id="upload-grades-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Upload Grades</button>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Students with Grades Recorded</h3>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Grades</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fee Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="grades-summary-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-grades-message" class="text-center py-4 text-gray-500 hidden">No grades recorded yet.</p>
+                    </div>
+                    `;
+                    break;
+                case 'students':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Student Management</h2>
+                    <div class="flex justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Student List (${studentsData.length})</h3>
+                    <button id="add-student-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    + Add New Student
+                    </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fee Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="students-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-students-message" class="text-center py-4 text-gray-500 hidden">No student records found. Add a new student to begin.</p>
+                    </div>
+                    ${studentModalHTML}
+                    `;
+                    break;
+                case 'classes':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Class Management</h2>
+                    <div class="flex justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Class List (${classesData.length})</h3>
+                    <button id="add-class-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    + Add New Class
+                    </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tuition Fee (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Students</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="classes-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-classes-message" class="text-center py-4 text-gray-500 hidden">No classes configured.</p>
+                    </div>
+                    `;
+                    break;
+
+                case 'subjects':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Subject Management</h2>
+                    <div class="flex justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Subject List (${subjectsData.length})</h3>
+                    <button id="add-subject-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    + Add New Subject
+                    </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="subjects-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-subjects-message" class="text-center py-4 text-gray-500 hidden">No subjects configured.</p>
+                    </div>
+                    ${subjectModalHTML}
+                    `;
+                    break;
+
+                case 'teachers':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Teacher Management</h2>
+                    <div class="flex justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Teacher List (${teachersData.length})</h3>
+                    <button id="add-teacher-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    + Add New Teacher
+                    </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teaching Assignments</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sponsor Class</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="teachers-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-teachers-message" class="text-center py-4 text-gray-500 hidden">No teacher records found. Add a new teacher to begin.</p>
+                    </div>
+                    ${teacherModalHTML}
+                    `;
+                    break;
+
+                case 'finance':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Finance & Fees Management</h2>
+
+                    <div class="mb-6 border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button id="tab-student" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600 focus:outline-none" data-target="student-finance-section">
+                    Student Finance (Tuition & Fees)
+                    </button>
+                    <button id="tab-teacher" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none" data-target="teacher-finance-section">
+                    Teacher Finance (Salaries)
+                    </button>
+                    <button id="tab-fee-setup" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none" data-target="fee-setup-section">
+                    Fee Type Setup
+                    </button>
+                    </nav>
+                    </div>
+
+                    <section id="student-finance-section" class="tab-content space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Student Financial Overview</h3>
+                    <p class="text-sm text-gray-600 mb-4">Tuition is automatically pulled from the **Class Management** section.</p>
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Due (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Paid (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="student-finance-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-student-finance-message" class="text-center py-4 text-gray-500 hidden">No students enrolled yet.</p>
+                    </div>
+                    </section>
+
+                    <section id="teacher-finance-section" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Teacher Salary Management</h3>
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Salary (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">YTD Paid (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="teacher-finance-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-teacher-finance-message" class="text-center py-4 text-gray-500 hidden">No teachers on record.</p>
+                    </div>
+                    </section>
+
+                    <section id="fee-setup-section" class="tab-content hidden space-y-6">
+                    <div class="flex justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Additional Fee Types (${feesData.length})</h3>
+                    <button id="add-fee-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    + Add New Fee Type
+                    </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fee Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (L$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required for All?</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="fees-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-fees-message" class="text-center py-4 text-gray-500 hidden">No additional fee types configured.</p>
+                    </div>
+                    </section>
+
+                    ${feeModalHTML}
+                    ${paymentModalHTML}
+                    ${salaryModalHTML}
+                    `;
+                    break;
+
+                case 'schedules':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Schedule Management</h2>
+                    <div class="flex justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Class Schedules (${schedulesData.length})</h3>
+                    <button id="add-schedule-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    + Add New Schedule
+                    </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="schedules-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                    </table>
+                    </div>
+                    <p id="no-schedules-message" class="text-center py-4 text-gray-500 hidden">No schedules configured.</p>
+                    </div>
+                    ${scheduleModalHTML}
+                    ${scheduleViewModalHTML}
+                    `;
+                    break;
+                case 'settings':
+                    html = `
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">System Settings</h2>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Academic Year Management</h3>
+                    <form id="settings-form" class="space-y-4">
+                    <div>
+                    <label for="academic-year" class="block text-sm font-medium text-gray-700">Current Academic Year</label>
+                    <input type="text" id="academic-year" value="${settingsData.academicYear}" required class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">Update Settings</button>
+                    </form>
+                    <div id="settings-message" class="mt-4 text-green-600 hidden">Settings saved successfully!</div>
+
+                    <h3 class="text-xl font-semibold mt-8 mb-4 border-b pb-2">Data Management (Danger Zone)</h3>
+                    <button id="clear-data-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Clear All Local Data</button>
+                    <p class="text-xs text-gray-500 mt-2">Warning: This action will delete all core data from your browser.</p>
+                    </div>
+                    `;
+                    break;
+
+                default:
+                    html = `<p class="text-xl p-8 text-center text-gray-500">Content not found for: ${contentId}</p>`;
+                }
+
+                contentArea.innerHTML = html;
+
+                // Re-attach event listeners after content is loaded (Crucial for dynamic content)
+                if (contentId === 'classes') {
+                    attachClassListeners();
+                    renderClassesTable();
+                } else if (contentId === 'subjects') {
+                    attachSubjectListeners();
+                    renderSubjectsTable();
+                } else if (contentId === 'grades') {
+                    attachGradeListeners();
+                    renderGradesSummaryTable();
+                } else if (contentId === 'students') {
+                    attachStudentListeners();
+                    renderStudentsTable();
+                } else if (contentId === 'teachers') {
+                    attachTeacherListeners();
+                    renderTeachersTable();
+                } else if (contentId === 'finance') {
+                    attachFeeListeners();
+                    renderFeesTable();
+                    renderStudentFinanceTable();
+                    renderTeacherFinanceTable();
+                    attachFinanceTabListeners();
+                } else if (contentId === 'schedules') {
+                    attachScheduleListeners();
+                    renderSchedulesTable();
+                } else if (contentId === 'settings') {
+                    attachSettingsListeners();
+                }
+            }
+            // --- MODAL HTML DEFINITIONS ---
+
+            const studentModalHTML = `
+            <div id="student-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-96 hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 id="modal-title" class="text-xl font-semibold mb-4 border-b pb-2">Add New Student</h3>
+            <form id="student-form" class="space-y-4">
+            <input type="hidden" id="student-id-field">
+            <div>
+            <label for="student-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+            <input type="text" id="student-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+            <div>
+            <label for="student-class" class="block text-sm font-medium text-gray-700">Class Assignment</label>
+            <select id="student-class" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            <option value="">-- Select Class --</option>
+            ${classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+            </select>
+            </div>
+            <div class="flex justify-end space-x-2">
+            <button type="button" id="close-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save Student</button>
+            </div>
+            </form>
+            </div>
+            </div>
+            `;
+
+            const teacherModalHTML = `
+            <div id="teacher-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <h3 id="teacher-modal-title" class="text-xl font-semibold mb-4 border-b pb-2">Add New Teacher</h3>
+            <form id="teacher-form" class="space-y-6">
+            <input type="hidden" id="teacher-id-field">
+            <div>
+            <label for="teacher-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+            <input type="text" id="teacher-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+
+            <div>
+            <h4 class="text-md font-medium text-gray-700 mb-2">Teaching Assignments</h4>
+            <div id="teacher-assignments-container" class="space-y-3 border-l-2 border-gray-200 pl-4">
+            </div>
+            <button type="button" id="add-assignment-btn" class="mt-3 text-sm text-blue-600 hover:text-blue-800 font-semibold">+ Add Assignment</button>
+            </div>
+
+            <div class="border-t pt-4">
+            <div class="flex items-center">
+            <input type="checkbox" id="teacher-sponsor-checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+            <label for="teacher-sponsor-checkbox" class="ml-2 block text-sm text-gray-900">Assign as Class Sponsor</label>
+            </div>
+            <div id="sponsor-class-section" class="hidden mt-2">
+            <label for="sponsor-class-select" class="block text-sm font-medium text-gray-700">Select Sponsor Class</label>
+            <select id="sponsor-class-select" class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            <option value="">-- Select Class --</option>
+            ${classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+            </select>
+            </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-4 border-t">
+            <button type="button" id="close-teacher-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save Teacher</button>
+            </div>
+            </form>
+            </div>
+            </div>
+            `;
+
+            const feeModalHTML = `
+            <div id="fee-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-96 hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 id="fee-modal-title" class="text-xl font-semibold mb-4 border-b pb-2">Add New Fee Type</h3>
+            <form id="fee-form" class="space-y-4">
+            <input type="hidden" id="fee-id-field">
+            <div>
+            <label for="fee-name" class="block text-sm font-medium text-gray-700">Fee Name (e.g., Library)</label>
+            <input type="text" id="fee-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+            <div>
+            <label for="fee-amount" class="block text-sm font-medium text-gray-700">Amount (L$)</label>
+            <input type="number" id="fee-amount" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+            <div class="flex items-center">
+            <input type="checkbox" id="fee-required" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+            <label for="fee-required" class="ml-2 block text-sm text-gray-900">Required for All Students</label>
+            </div>
+            <div class="flex justify-end space-x-2">
+            <button type="button" id="close-fee-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save Fee</button>
+            </div>
+            </form>
+            </div>
+            </div>
+            `;
+
+            const classModalHTML = `
+            <div id="class-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-96 hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 id="class-modal-title" class="text-xl font-semibold mb-4 border-b pb-2">Add New Class</h3>
+            <form id="class-form" class="space-y-4">
+            <input type="hidden" id="class-id-field">
+            <div>
+            <label for="class-name" class="block text-sm font-medium text-gray-700">Class Name (e.g., 10th Grade A)</label>
+            <input type="text" id="class-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+            <div>
+            <label for="class-tuition" class="block text-sm font-medium text-gray-700">Tuition Fee (L$)</label>
+            <input type="number" id="class-tuition" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" value="0" min="0">
+            </div>
+            <div class="flex justify-end space-x-2">
+            <button type="button" id="close-class-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save Class</button>
+            </div>
+            </form>
+            </div>
+            </div>
+            `;
+
+            const classViewModalHTML = `
+            <div id="class-view-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-10 mx-auto p-8 border w-full max-w-4xl shadow-xl rounded-md bg-white">
+            <div class="flex justify-between items-start mb-4 border-b pb-2">
+            <h3 id="class-view-modal-title" class="text-2xl font-bold text-gray-800">Class Details</h3>
+            <button id="close-class-view-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+            <h4 class="text-xl font-semibold mb-3 border-b pb-2 text-gray-700">Student Roster</h4>
+            <div class="bg-gray-50 p-4 rounded-md max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+            <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            </tr>
+            </thead>
+            <tbody id="cv-student-list" class="bg-white divide-y divide-gray-200">
+            </tbody>
+            </table>
+            <p id="cv-no-students-message" class="text-center py-4 text-gray-500 hidden">
+            No students are currently enrolled in this class.
+            </p>
+            </div>
+            </div>
+            <div class="space-y-8">
+            <div>
+            <h4 class="text-xl font-semibold mb-3 border-b pb-2 text-gray-700">Class Sponsor</h4>
+            <div class="bg-blue-50 p-4 rounded-md">
+            <p id="cv-sponsor-name" class="text-lg font-medium text-blue-800"></p>
+            </div>
+            </div>
+            <div>
+            <h4 class="text-xl font-semibold mb-3 border-b pb-2 text-gray-700">Assigned Instructors</h4>
+            <div class="bg-gray-50 p-4 rounded-md max-h-72 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+            <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor Name</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+            </tr>
+            </thead>
+            <tbody id="cv-instructor-list" class="bg-white divide-y divide-gray-200">
+            </tbody>
+            </table>
+            <p id="cv-no-instructors-message" class="text-center py-4 text-gray-500 hidden">
+            No instructors are assigned to this class.
+            </p>
+            </div>
+            </div>
+            <div>
+            <h4 class="text-xl font-semibold mb-3 border-b pb-2 text-gray-700">Class Schedule</h4>
+            <div class="bg-gray-50 p-4 rounded-md">
+            <button id="cv-view-schedule-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition" data-class-name="">View Schedule</button>
+            </div>
+            </div>
+            </div>
+            </div>
+            </div>
+            </div>
+            `;
+
+            const subjectModalHTML = `
+            <div id="subject-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-96 hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 id="subject-modal-title" class="text-xl font-semibold mb-4 border-b pb-2">Add New Subject</h3>
+            <form id="subject-form" class="space-y-4">
+            <input type="hidden" id="subject-id-field">
+            <div>
+            <label for="subject-name" class="block text-sm font-medium text-gray-700">Subject Name (e.g., General Math)</label>
+            <input type="text" id="subject-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+            <div>
+            <label for="subject-code" class="block text-sm font-medium text-gray-700">Subject Code (e.g., GM101)</label>
+            <input type="text" id="subject-code" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+            <div class="flex justify-end space-x-2">
+            <button type="button" id="close-subject-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save Subject</button>
+            </div>
+            </form>
+            </div>
+            </div>
+            `;
+
+            const paymentModalHTML = `
+            <div id="payment-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+            <h3 id="payment-modal-title" class="text-xl font-semibold">Manage Payments</h3>
+            <button type="button" id="close-payment-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mb-6 text-center">
+            <div>
+            <p class="text-sm text-gray-500">Total Due</p>
+            <p id="pm-total-due" class="text-2xl font-bold text-red-600">L$ 0</p>
+            </div>
+            <div>
+            <p class="text-sm text-gray-500">Total Paid</p>
+            <p id="pm-total-paid" class="text-2xl font-bold text-green-600">L$ 0</p>
+            </div>
+            <div>
+            <p class="text-sm text-gray-500">Balance</p>
+            <p id="pm-balance" class="text-2xl font-bold text-blue-600">L$ 0</p>
+            </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-md">
+            <h4 class="font-semibold mb-2">Record New Payment</h4>
+            <form id="payment-form" class="flex items-end gap-4">
+            <input type="hidden" id="payment-student-id">
+            <div class="flex-grow">
+            <label for="payment-amount" class="block text-sm font-medium text-gray-700">Amount (L$)</label>
+            <input type="number" id="payment-amount" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" min="1">
+            </div>
+            <div class="flex-grow">
+            <label for="payment-description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+            <input type="text" id="payment-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="e.g., First Installment">
+            </div>
+            <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Add Payment</button>
+            </form>
+            </div>
+
+            <div class="mt-6">
+            <h4 class="font-semibold mb-2">Payment History</h4>
+            <div class="overflow-y-auto max-h-60 border rounded-md">
+            <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50 sticky top-0">
+            <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount (L$)</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+            </tr>
+            </thead>
+            <tbody id="payment-history-body" class="bg-white divide-y divide-gray-200">
+            </tbody>
+            </table>
+            </div>
+            </div>
+
+            </div>
+            </div>
+            `;
+
+            const salaryModalHTML = `
+            <div id="salary-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+            <h3 id="salary-modal-title" class="text-xl font-semibold">Manage Salary</h3>
+            <button type="button" id="close-salary-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+            <p class="text-sm text-gray-500">Monthly Salary</p>
+            <p id="sm-monthly-salary" class="text-2xl font-bold text-red-600">L$ 0</p>
+            </div>
+            <div>
+            <p class="text-sm text-gray-500">YTD Paid</p>
+            <p id="sm-ytd-paid" class="text-2xl font-bold text-green-600">L$ 0</p>
+            </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-md mb-6">
+            <h4 class="font-semibold mb-2">Set/Update Monthly Salary</h4>
+            <form id="salary-update-form" class="flex items-end gap-4">
+            <input type="hidden" id="salary-teacher-id">
+            <div class="flex-grow">
+            <label for="new-salary-amount" class="block text-sm font-medium text-gray-700">New Monthly Salary (L$)</label>
+            <input type="number" id="new-salary-amount" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" min="0">
+            </div>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update Salary</button>
+            </form>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-md">
+            <h4 class="font-semibold mb-2">Record New Payment (Payroll)</h4>
+            <form id="payroll-form" class="flex items-end gap-4">
+            <div class="flex-grow">
+            <label for="payroll-amount" class="block text-sm font-medium text-gray-700">Amount Paid (L$)</label>
+            <input type="number" id="payroll-amount" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" min="1">
+            </div>
+            <div class="flex-grow">
+            <label for="payroll-description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+            <input type="text" id="payroll-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="e.g., September Payroll">
+            </div>
+            <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Record Payment</button>
+            </form>
+            </div>
+
+            <div class="mt-6">
+            <h4 class="font-semibold mb-2">Payment History</h4>
+            <div class="overflow-y-auto max-h-60 border rounded-md">
+            <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50 sticky top-0">
+            <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount (L$)</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+            </tr>
+            </thead>
+            <tbody id="salary-history-body" class="bg-white divide-y divide-gray-200">
+            </tbody>
+            </table>
+            </div>
+            </div>
+
+            </div>
+            </div>
+            `;
+
+            const scheduleModalHTML = `
+            <div id="schedule-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-96 hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 id="schedule-modal-title" class="text-xl font-semibold mb-4 border-b pb-2">Add New Schedule</h3>
+            <form id="schedule-form" class="space-y-4">
+            <input type="hidden" id="schedule-id-field">
+            <div>
+            <label for="schedule-class" class="block text-sm font-medium text-gray-700">Class</label>
+            <select id="schedule-class" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            <option value="">-- Select Class --</option>
+            ${classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+            </select>
+            </div>
+            <div>
+            <label for="schedule-day" class="block text-sm font-medium text-gray-700">Day of Week</label>
+            <select id="schedule-day" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            <option value="">-- Select Day --</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            </select>
+            </div>
+            <div>
+            <label for="schedule-time" class="block text-sm font-medium text-gray-700">Time (e.g., 08:00-09:00)</label>
+            <input type="text" id="schedule-time" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="e.g., 08:00-09:00">
+            </div>
+            <div>
+            <label for="schedule-subject" class="block text-sm font-medium text-gray-700">Subject</label>
+            <select id="schedule-subject" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            <option value="">-- Select Subject --</option>
+            ${subjectsData.map(s => `<option value="${s.name}">${s.name}</option>`).join('')}
+            </select>
+            </div>
+            <div>
+            <label for="schedule-teacher" class="block text-sm font-medium text-gray-700">Teacher</label>
+            <select id="schedule-teacher" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            <option value="">-- Select Teacher --</option>
+            ${teachersData.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+            </div>
+            <div class="flex justify-end space-x-2">
+            <button type="button" id="close-schedule-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save Schedule</button>
+            </div>
+            </form>
+            </div>
+            </div>
+            `;
+
+            const scheduleViewModalHTML = `
+            <div id="schedule-view-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-10 mx-auto p-8 border w-full max-w-4xl shadow-xl rounded-md bg-white">
+            <div class="flex justify-between items-start mb-4 border-b pb-2">
+            <h3 id="schedule-view-modal-title" class="text-2xl font-bold text-gray-800">Class Schedule</h3>
+            <button id="close-schedule-view-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-md">
+            <h4 class="text-xl font-semibold mb-3 border-b pb-2">Weekly Schedule</h4>
+            <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+            <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
+            </tr>
+            </thead>
+            <tbody id="schedule-view-table-body" class="bg-white divide-y divide-gray-200">
+            </tbody>
+            </table>
+            </div>
+            <p id="sv-no-schedules-message" class="text-center py-4 text-gray-500 hidden">No schedule entries for this class.</p>
+            </div>
+            <div class="flex justify-end mt-4">
+            <button id="cancel-schedule-view-modal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+            </div>
+            </div>
+            </div>
+            `;
+
+
+            // --- GRADE MANAGEMENT FUNCTIONS ---
+
+            let gradeHistory = JSON.parse(localStorage.getItem('gradeHistory')) || [];
+
+            function saveGradeHistory(action, grade, user = 'Admin') {
+                gradeHistory.push({
+                    id: 'GH' + Date.now().toString().slice(-6),
+                    action: action,
+                    gradeId: grade.id,
+                    studentId: grade.studentId,
+                    subject: grade.subject,
+                    semester: grade.semester,
+                    period: grade.period,
+                    type: grade.type,
+                    oldScore: grade.score,
+                    newScore: action === 'edit' ? parseInt(document.querySelector(`input[data-grade-id="${grade.id}"]`).value): null,
+                    date: new Date().toLocaleString(),
+                    user: user
+                });
+                localStorage.setItem('gradeHistory', JSON.stringify(gradeHistory));
+            }
+
+            window.saveGradeEdit = (gradeId) => {
+                const input = document.querySelector(`input[data-grade-id="${gradeId}"]`);
+                if (!input) return;
+
+                const newScore = parseInt(input.value);
+                if (isNaN(newScore) || newScore < 0 || newScore > 100) {
+                    showNotification('Invalid score. Please enter a value between 0 and 100.', 'error');
+                    return;
+                }
+
+                const gradeIndex = gradesData.findIndex(g => g.id === gradeId);
+                if (gradeIndex !== -1) {
+                    saveGradeHistory('edit', gradesData[gradeIndex]);
+                    gradesData[gradeIndex].score = newScore;
+                    gradesData[gradeIndex].date = new Date().toLocaleDateString();
+                    saveGrades();
+                    showNotification('Grade updated successfully!', 'success');
+                    viewStudentGrades(gradesData[gradeIndex].studentId);
+                }
+            };
+
+            window.deleteGrade = (gradeId, fromModal = false) => {
+                if (confirm('Are you sure you want to delete this grade record?')) {
+                    const gradeToDelete = gradesData.find(g => g.id === gradeId);
+                    const studentId = gradeToDelete ? gradeToDelete.studentId: null;
+
+                    saveGradeHistory('delete', gradeToDelete);
+                    gradesData = gradesData.filter(g => g.id !== gradeId);
+                    saveGrades();
+
+                    if (fromModal && studentId) {
+                        viewStudentGrades(studentId);
+                    } else {
+                        loadContent('grades');
+                    }
+                    loadContent('dashboard');
+                    showNotification('Grade deleted successfully!', 'success');
+                }
+            };
+
+            function updateStudentSelect() {
+                const selectedClass = document.getElementById('grade-class').value;
+                const studentSelect = document.getElementById('grade-student');
+
+                studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+                studentSelect.disabled = true;
+
+                if (selectedClass) {
+                    const filteredStudents = studentsData.filter(s => s.class === selectedClass);
+
+                    if (filteredStudents.length > 0) {
+                        filteredStudents.forEach(s => {
+                            const option = document.createElement('option');
+                            option.value = s.id;
+                            option.textContent = s.name + ' (' + s.id + ')';
+                            studentSelect.appendChild(option);
+                        });
+                        studentSelect.disabled = false;
+                        studentSelect.classList.remove('bg-gray-50');
+                    } else {
+                        studentSelect.innerHTML = '<option value="">No students in this class</option>';
+                    }
+                }
+            }
+
+            // In the global scope
+            settingsData.passingThreshold = settingsData.passingThreshold || 70;
+
+            function handleSettingsFormSubmit(e) {
+                e.preventDefault();
+                settingsData.academicYear = document.getElementById('academic-year').value.trim();
+                settingsData.passingThreshold = parseInt(document.getElementById('passing-threshold').value);
+                if (isNaN(settingsData.passingThreshold) || settingsData.passingThreshold < 0 || settingsData.passingThreshold > 100) {
+                    showNotification('Invalid passing threshold. Please enter a value between 0 and 100.', 'error');
+                    return;
+                }
+                saveSettings();
+                showNotification('Settings saved successfully!', 'success');
+                setTimeout(() => document.getElementById('settings-message').classList.add('hidden'), 3000);
+                loadContent('dashboard');
+            }
+
+            window.updateScoreColor = (input) => {
+                const score = parseInt(input.value);
+                input.classList.remove('text-green-600', 'text-red-600');
+                if (!isNaN(score) && score >= settingsData.passingThreshold) {
+                    input.classList.add('text-green-600');
+                } else {
+                    input.classList.add('text-red-600');
+                }
+            };
+
+
+            function handleGradeUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const text = event.target.result;
+                    const rows = text.split('\n').map(row => row.split(','));
+                    const headers = rows[0].map(h => h.trim().toLowerCase());
+                    if (!headers.includes('studentid') || !headers.includes('subject') || !headers.includes('semester') || !headers.includes('period') || !headers.includes('score') || !headers.includes('type')) {
+                        showNotification('Invalid CSV format. Required columns: studentId,subject,semester,period,score,type', 'error');
+                        return;
+                    }
+
+                    const newGrades = [];
+                    for (let i = 1; i < rows.length; i++) {
+                        const [studentId,
+                            subject,
+                            semester,
+                            period,
+                            score,
+                            type] = rows[i].map(s => s.trim());
+                        if (!studentId || !subject || !semester || !period || !score || !type) continue;
+
+                        const student = studentsData.find(s => s.id === studentId);
+                        if (!student) {
+                            showNotification(`Invalid student ID: ${studentId}`, 'error');
+                            continue;
+                        }
+                        if (!subjectsData.some(s => s.name === subject)) {
+                            showNotification(`Invalid subject: ${subject}`, 'error');
+                            continue;
+                        }
+                        if (!semestersData.some(s => s.name === semester)) {
+                            showNotification(`Invalid semester: ${semester}`, 'error');
+                            continue;
+                        }
+                        if (!periodsData.some(p => p.name === period)) {
+                            showNotification(`Invalid period: ${period}`, 'error');
+                            continue;
+                        }
+                        const scoreNum = parseInt(score);
+                        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+                            showNotification(`Invalid score for ${studentId}: ${score}`, 'error');
+                            continue;
+                        }
+                        if (!['Exam', 'Quiz', 'Assignment', 'Project'].includes(type)) {
+                            showNotification(`Invalid grade type for ${studentId}: ${type}`, 'error');
+                            continue;
+                        }
+
+                        const existingGrade = gradesData.find(g =>
+                            g.studentId === studentId &&
+                            g.subject === subject &&
+                            g.semester === semester &&
+                            g.period === period &&
+                            g.type === type
+                        );
+                        if (existingGrade) {
+                            showNotification(`Grade already exists for ${studentId}, ${subject}, ${semester}, ${period}, ${type}`, 'error');
+                            continue;
+                        }
+
+                        newGrades.push({
+                            id: 'G' + Date.now().toString().slice(-6) + i,
+                            studentId,
+                            studentName: student.name,
+                            class: student.class,
+                            semester,
+                            period,
+                            subject,
+                            score: scoreNum,
+                            type,
+                            date: new Date().toLocaleDateString()
+                        });
+                    }
+
+                    gradesData.push(...newGrades);
+                    saveGrades();
+                    loadContent('grades');
+                    loadContent('dashboard');
+                    showNotification(`${newGrades.length} grades uploaded successfully!`, 'success');
+                };
+                reader.readAsText(file);
+            }
+
+            document.getElementById('upload-grades-btn')?.addEventListener('click', () => {
+                document.getElementById('grade-upload').click();
+            });
+            document.getElementById('grade-upload')?.addEventListener('change', handleGradeUpload);
+
+            function handleGradeFormSubmit(e) {
+                e.preventDefault();
+                const classId = document.getElementById('grade-class').value;
+                const studentId = document.getElementById('grade-student').value;
+                const semester = document.getElementById('grade-semester').value;
+                const period = document.getElementById('grade-period').value;
+                const subject = document.getElementById('grade-subject').value;
+                const score = parseInt(document.getElementById('grade-score').value);
+                const type = document.getElementById('grade-type').value.trim();
+
+                if (!classId || !studentId || !semester || !period || !subject || isNaN(score) || score < 0 || score > 100 || !type) {
+                    alert('Please fill out all grade fields correctly.');
+                    return;
+                }
+
+                const student = studentsData.find(s => s.id === studentId);
+
+                const newGrade = {
+                    id: 'G' + Date.now().toString().slice(-6),
+                    studentId: studentId,
+                    studentName: student ? student.name: 'N/A',
+                    class: classId,
+                    semester: semester,
+                    period: period,
+                    subject: subject,
+                    score: score,
+                    type: type,
+                    date: new Date().toLocaleDateString()
+                };
+
+                gradesData.push(newGrade);
+                saveGrades();
+                document.getElementById('grade-form').reset();
+                updateStudentSelect();
+                loadContent('grades');
+                loadContent('dashboard');
+            }
+
+            function renderGradesSummaryTable() {
+                const tbody = document.getElementById('grades-summary-table-body');
+                const message = document.getElementById('no-grades-message');
+
+                const studentsWithGrades = [...new Set(gradesData.map(g => g.studentId))];
+
+                if (studentsWithGrades.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+
+                message.classList.add('hidden');
+
+                tbody.innerHTML = studentsWithGrades.map(studentId => {
+                    const student = studentsData.find(s => s.id === studentId);
+                    if (!student) return ''; // Skip if student was deleted
+
+                    const gradeCount = gradesData.filter(g => g.studentId === studentId).length;
+                    const statusColor = student.feeStatus === 'owing' ? 'text-red-600': 'text-green-600';
+                    const statusText = student.feeStatus.charAt(0).toUpperCase() + student.feeStatus.slice(1);
+
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.class}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${gradeCount}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold ${statusColor}">${statusText}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="viewStudentGrades('${student.id}')" class="text-blue-600 hover:text-blue-900 mr-3">View Grades</button>
+                    </td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+
+            window.viewStudentGrades = (studentId) => {
+                const student = studentsData.find(s => s.id === studentId);
+                if (!student) return;
+
+                if (student.feeStatus === 'owing') {
+                    showNotification(`Access Denied: ${student.name} has an outstanding balance and cannot view their grade sheet. Please clear the balance in the Finance section.`, 'error');
+                    return;
+                }
+
+                const filterSemester = document.getElementById('gs-filter-semester')?.value || '';
+                const filterPeriod = document.getElementById('gs-filter-period')?.value || '';
+                let studentGrades = gradesData.filter(g => g.studentId === studentId);
+                if (filterSemester) studentGrades = studentGrades.filter(g => g.semester === filterSemester);
+                if (filterPeriod) studentGrades = studentGrades.filter(g => g.period === filterPeriod);
+
+                const tbody = document.getElementById('gradesheet-table-body');
+                const message = document.getElementById('gs-no-grades-message');
+                const modal = document.getElementById('gradesheet-modal');
+
+                document.getElementById('gradesheet-modal-title').textContent = `${student.name}'s Grade Sheet`;
+                document.getElementById('gs-student-name').textContent = student.name;
+                document.getElementById('gs-student-name').dataset.studentId = studentId;
+                document.getElementById('gs-student-class').textContent = student.class;
+
+                if (studentGrades.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    modal.classList.remove('hidden');
+                    return;
+                }
+
+                message.classList.add('hidden');
+
+                const subjectPeriodPairs = [...new Set(studentGrades.map(g => `${g.subject}|${g.period}`))].map(pair => ({
+                    subject: pair.split('|')[0],
+                    period: pair.split('|')[1]
+                }));
+
+                tbody.innerHTML = subjectPeriodPairs.map(pair => {
+                    const rowGrades = studentGrades.filter(g => g.subject === pair.subject && g.period === pair.period);
+                    const semesterScores = semestersData.map(semester => {
+                        const grade = rowGrades.find(g => g.semester === semester.name);
+                        return grade ? `
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                        <input type="number" value="${grade.score}" data-field="score" data-grade-id="${grade.id}" min="0" max="100" class="w-20 border p-1 rounded text-sm text-center focus:border-blue-500 ${grade.score >= settingsData.passingThreshold ? 'text-green-600': 'text-red-600'}" oninput="updateScoreColor(this)">
+                        <button onclick="saveGradeEdit('${grade.id}')" class="text-green-600 hover:text-green-900 mr-2 text-sm">Save</button>
+                        <button onclick="deleteGrade('${grade.id}', true)" class="text-red-600 hover:text-red-900 text-sm">Delete</button>
+                        </td>
+                        `: '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-400">-</td>';
+                    }).join('');
+
+                    const scores = rowGrades.map(g => g.score).filter(score => !isNaN(score));
+                    const average = scores.length > 0 ? (scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(2): '-';
+
+                    return `
+                    <tr>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${pair.subject}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${pair.period}</td>
+                    ${semesterScores}
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold ${average >= settingsData.passingThreshold ? 'text-green-600': average !== '-' ? 'text-red-600': 'text-gray-400'}">${average}</td>
+                    </tr>
+                    `;
+                }).join('');
+
+                modal.classList.remove('hidden');
+            };
+
+            window.updateScoreColor = (input) => {
+                const score = parseInt(input.value);
+                input.classList.remove('text-green-600', 'text-red-600');
+                if (score >= 70) {
+                    input.classList.add('text-green-600');
+                } else {
+                    input.classList.add('text-red-600');
+                }
+            }
+
+            window.saveGradeEdit = (gradeId) => {
+                const input = document.querySelector(`input[data-grade-id="${gradeId}"]`);
+                if (!input) return;
+
+                const newScore = parseInt(input.value);
+
+                if (isNaN(newScore) || newScore < 0 || newScore > 100) {
+                    alert('Invalid score. Please enter a value between 0 and 100.');
+                    return;
+                }
+
+                const gradeIndex = gradesData.findIndex(g => g.id === gradeId);
+                if (gradeIndex !== -1) {
+                    gradesData[gradeIndex].score = newScore;
+                    saveGrades();
+                    alert('Grade updated successfully!');
+                    viewStudentGrades(gradesData[gradeIndex].studentId);
+                }
+            }
+
+            window.deleteGrade = (gradeId, fromModal = false) => {
+                if (confirm('Are you sure you want to delete this grade record?')) {
+                    const gradeToDelete = gradesData.find(g => g.id === gradeId);
+                    const studentId = gradeToDelete ? gradeToDelete.studentId: null;
+
+                    gradesData = gradesData.filter(g => g.id !== gradeId);
+                    saveGrades();
+
+                    if (fromModal && studentId) {
+                        viewStudentGrades(studentId);
+                    } else {
+                        loadContent('grades');
+                    }
+                    loadContent('dashboard');
+                }
+            }
+
+            // --- SEMESTER AND PERIOD MANAGEMENT ---
+
+            function handleAddSemester() {
+                const semesterName = document.getElementById('new-semester').value.trim();
+                if (!semesterName) {
+                    alert('Please enter a semester name.');
+                    return;
+                }
+                if (semestersData.some(s => s.name === semesterName)) {
+                    alert('Semester name already exists.');
+                    return;
+                }
+                semestersData.push({
+                    id: 'SEM' + Date.now().toString().slice(-6),
+                    name: semesterName
+                });
+                saveSemesters();
+                document.getElementById('new-semester').value = '';
+                loadContent('grades');
+            }
+
+            window.deleteSemester = (semesterId) => {
+                if (gradesData.some(g => g.semester === semestersData.find(s => s.id === semesterId).name)) {
+                    alert('Cannot delete semester. Grades are assigned to it.');
+                    return;
+                }
+                if (confirm('Are you sure you want to delete this semester?')) {
+                    semestersData = semestersData.filter(s => s.id !== semesterId);
+                    saveSemesters();
+                    loadContent('grades');
+                }
+            }
+
+            function handleAddPeriod() {
+                const periodName = document.getElementById('new-period').value.trim();
+                if (!periodName) {
+                    alert('Please enter a period name.');
+                    return;
+                }
+                if (periodsData.some(p => p.name === periodName)) {
+                    alert('Period name already exists.');
+                    return;
+                }
+                periodsData.push({
+                    id: 'PER' + Date.now().toString().slice(-6),
+                    name: periodName
+                });
+                savePeriods();
+                document.getElementById('new-period').value = '';
+                loadContent('grades');
+            }
+
+            window.deletePeriod = (periodId) => {
+                if (gradesData.some(g => g.period === periodsData.find(p => p.id === periodId).name)) {
+                    alert('Cannot delete period. Grades are assigned to it.');
+                    return;
+                }
+                if (confirm('Are you sure you want to delete this period?')) {
+                    periodsData = periodsData.filter(p => p.id !== periodId);
+                    savePeriods();
+                    loadContent('grades');
+                }
+            }
+
+            function attachGradeListeners() {
+                document.getElementById('grade-class')?.addEventListener('change', updateStudentSelect);
+                document.getElementById('grade-form')?.addEventListener('submit', handleGradeFormSubmit);
+                document.getElementById('add-semester-btn')?.addEventListener('click', handleAddSemester);
+                document.getElementById('add-period-btn')?.addEventListener('click', handleAddPeriod);
+                document.getElementById('close-gradesheet-modal-btn')?.addEventListener('click', () => {
+                    document.getElementById('gradesheet-modal').classList.add('hidden');
+                    loadContent('grades');
+                });
+                updateStudentSelect();
+            }
+
+
+            // --- CLASS & SUBJECT CRUD FUNCTIONS ---
+
+            function renderClassesTable() {
+                const tbody = document.getElementById('classes-table-body');
+                const message = document.getElementById('no-classes-message');
+
+                if (classesData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+
+                message.classList.add('hidden');
+                tbody.innerHTML = classesData.map(cls => {
+                    const studentCount = studentsData.filter(s => s.class === cls.name).length;
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${cls.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${cls.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">${(cls.tuitionFee || 0).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${studentCount}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="viewClass('${cls.id}')" class="text-green-600 hover:text-green-900 mr-3">View</button>
+                    <button onclick="editClass('${cls.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                    <button onclick="deleteClass('${cls.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+
+            window.viewClass = (classId) => {
+                const cls = classesData.find(c => c.id === classId);
+                if (!cls) return;
+                const className = cls.name;
+
+                const modal = document.getElementById('class-view-modal');
+                const title = document.getElementById('class-view-modal-title');
+                const studentListBody = document.getElementById('cv-student-list');
+                const noStudentsMsg = document.getElementById('cv-no-students-message');
+                const instructorListBody = document.getElementById('cv-instructor-list');
+                const noInstructorsMsg = document.getElementById('cv-no-instructors-message');
+                const sponsorNameEl = document.getElementById('cv-sponsor-name');
+                const scheduleBtn = document.getElementById('cv-view-schedule-btn');
+
+                if (!modal || !title || !studentListBody || !noStudentsMsg || !instructorListBody || !noInstructorsMsg || !sponsorNameEl || !scheduleBtn) {
+                    console.error('One or more elements not found in class-view-modal:', {
+                        modal, title, studentListBody, noStudentsMsg, instructorListBody, noInstructorsMsg, sponsorNameEl, scheduleBtn
+                    });
+                    alert('Error: Class view modal elements are missing.');
+                    return;
+                }
+
+                title.textContent = `Details for Class: ${className}`;
+                scheduleBtn.setAttribute('data-class-name', className);
+
+                const classStudents = studentsData.filter(s => s.class === className);
+                if (classStudents.length > 0) {
+                    studentListBody.innerHTML = classStudents.map(student => `
+                        <tr>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${student.id}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">${student.name}</td>
+                        </tr>
+                        `).join('');
+                    studentListBody.parentElement.classList.remove('hidden');
+                    noStudentsMsg.classList.add('hidden');
+                } else {
+                    studentListBody.innerHTML = '';
+                    studentListBody.parentElement.classList.add('hidden');
+                    noStudentsMsg.classList.remove('hidden');
+                }
+
+                const classInstructors = teachersData.filter(t => t.assignments.some(a => a.class === className));
+                if (classInstructors.length > 0) {
+                    let instructorHTML = '';
+                    classInstructors.forEach(teacher => {
+                        teacher.assignments.forEach(assignment => {
+                            if (assignment.class === className) {
+                                instructorHTML += `
+                                <tr>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">${teacher.name}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${assignment.subject}</td>
+                                </tr>`;
+                            }
+                        });
+                    });
+                    instructorListBody.innerHTML = instructorHTML;
+                    instructorListBody.parentElement.classList.remove('hidden');
+                    noInstructorsMsg.classList.add('hidden');
+                } else {
+                    instructorListBody.innerHTML = '';
+                    instructorListBody.parentElement.classList.add('hidden');
+                    noInstructorsMsg.classList.remove('hidden');
+                }
+
+                const classSponsor = teachersData.find(t => t.sponsorClass === className);
+                if (classSponsor) {
+                    sponsorNameEl.textContent = classSponsor.name;
+                    sponsorNameEl.classList.remove('text-gray-500', 'italic');
+                } else {
+                    sponsorNameEl.textContent = 'None Assigned';
+                    sponsorNameEl.classList.add('text-gray-500', 'italic');
+                }
+
+                scheduleBtn.onclick = () => viewClassSchedule(className);
+                modal.classList.remove('hidden');
+            };
+
+            window.editClass = (classId) => {
+                const cls = classesData.find(c => c.id === classId);
+                if (!cls) return;
+                document.getElementById('class-modal-title').textContent = 'Edit Class: ' + cls.name;
+                document.getElementById('class-id-field').value = cls.id;
+                document.getElementById('class-name').value = cls.name;
+                document.getElementById('class-tuition').value = cls.tuitionFee || 0;
+                document.getElementById('class-modal').classList.remove('hidden');
+            }
+            window.deleteClass = (classId) => {
+                const className = classesData.find(c => c.id === classId)?.name;
+                if (studentsData.some(s => s.class === className)) {
+                    alert('Cannot delete class. Students are still assigned to it.');
+                    return;
+                }
+                if (teachersData.some(t => t.assignments.some(a => a.class === className) || t.sponsorClass === className)) {
+                    alert('Cannot delete class. Teachers are still assigned to it.');
+                    return;
+                }
+                if (schedulesData.some(s => s.class === className)) {
+                    alert('Cannot delete class. Schedules are still assigned to it.');
+                    return;
+                }
+                if (confirm('Are you sure you want to delete this class?')) {
+                    classesData = classesData.filter(c => c.id !== classId);
+                    saveClasses();
+                    loadContent('classes');
+                    loadContent('dashboard');
+                }
+            };
+            function handleClassFormSubmit(e) {
+                e.preventDefault();
+                const idField = document.getElementById('class-id-field').value;
+                const name = document.getElementById('class-name').value.trim();
+                const tuitionFee = parseFloat(document.getElementById('class-tuition').value);
+
+                if (!name || isNaN(tuitionFee)) return;
+                if (idField) {
+                    const index = classesData.findIndex(c => c.id === idField);
+                    if (index !== -1) {
+                        classesData[index] = {
+                            ...classesData[index],
+                            name,
+                            tuitionFee
+                        };
+                    }
+                } else {
+                    classesData.push({
+                        id: 'C' + Date.now().toString().slice(-6), name, tuitionFee
+                    });
+                }
+                saveClasses();
+                document.getElementById('class-modal').classList.add('hidden');
+                loadContent('classes');
+                loadContent('dashboard');
+            }
+            function attachClassListeners() {
+                document.getElementById('add-class-btn')?.addEventListener('click', () => {
+                    document.getElementById('class-modal-title').textContent = 'Add New Class';
+                    document.getElementById('class-form').reset();
+                    document.getElementById('class-id-field').value = '';
+                    document.getElementById('class-modal').classList.remove('hidden');
+                });
+                document.getElementById('close-class-modal-btn')?.addEventListener('click', () => document.getElementById('class-modal').classList.add('hidden'));
+                document.getElementById('class-form')?.addEventListener('submit', handleClassFormSubmit);
+                document.getElementById('close-class-view-modal-btn')?.addEventListener('click', () => {
+                    document.getElementById('class-view-modal').classList.add('hidden');
+                });
+            }
+
+            function renderSubjectsTable() {
+                const tbody = document.getElementById('subjects-table-body');
+                const message = document.getElementById('no-subjects-message');
+
+                if (subjectsData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+                message.classList.add('hidden');
+                tbody.innerHTML = subjectsData.map(sub => `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${sub.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sub.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sub.code}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editSubject('${sub.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                    <button onclick="deleteSubject('${sub.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                    </tr>
+                    `).join('');
+            }
+            window.editSubject = (subjectId) => {
+                const sub = subjectsData.find(s => s.id === subjectId);
+                if (!sub) return;
+                document.getElementById('subject-modal-title').textContent = 'Edit Subject: ' + sub.name;
+                document.getElementById('subject-id-field').value = sub.id;
+                document.getElementById('subject-name').value = sub.name;
+                document.getElementById('subject-code').value = sub.code;
+                document.getElementById('subject-modal').classList.remove('hidden');
+            }
+            window.deleteSubject = (subjectId) => {
+                const subjectName = subjectsData.find(s => s.id === subjectId)?.name;
+                if (teachersData.some(t => t.assignments.some(a => a.subject === subjectName))) {
+                    alert('Cannot delete subject. Teachers are still assigned to teach it.');
+                    return;
+                }
+                if (schedulesData.some(s => s.subject === subjectName)) {
+                    alert('Cannot delete subject. It is still used in class schedules.');
+                    return;
+                }
+                if (confirm('Are you sure you want to delete this subject?')) {
+                    subjectsData = subjectsData.filter(s => s.id !== subjectId);
+                    saveSubjects();
+                    loadContent('subjects');
+                    loadContent('dashboard');
+                }
+            };
+            function handleSubjectFormSubmit(e) {
+                e.preventDefault();
+                const idField = document.getElementById('subject-id-field').value;
+                const name = document.getElementById('subject-name').value.trim();
+                const code = document.getElementById('subject-code').value.trim();
+
+                if (!name || !code) return;
+
+                if (idField) {
+                    const index = subjectsData.findIndex(s => s.id === idField);
+                    if (index !== -1) {
+                        subjectsData[index] = {
+                            ...subjectsData[index],
+                            name,
+                            code
+                        };
+                    }
+                } else {
+                    subjectsData.push({
+                        id: 'SUB' + Date.now().toString().slice(-4), name, code
+                    });
+                }
+                saveSubjects();
+                document.getElementById('subject-modal').classList.add('hidden');
+                loadContent('subjects');
+                loadContent('dashboard');
+            }
+            function attachSubjectListeners() {
+                document.getElementById('add-subject-btn')?.addEventListener('click', () => {
+                    document.getElementById('subject-modal-title').textContent = 'Add New Subject';
+                    document.getElementById('subject-form').reset();
+                    document.getElementById('subject-id-field').value = '';
+                    document.getElementById('subject-modal').classList.remove('hidden');
+                });
+                document.getElementById('close-subject-modal-btn')?.addEventListener('click', () => document.getElementById('subject-modal').classList.add('hidden'));
+                document.getElementById('subject-form')?.addEventListener('submit', handleSubjectFormSubmit);
+            }
+
+            // --- STUDENT CRUD FUNCTIONS ---
+
+            function renderStudentsTable() {
+                const tbody = document.getElementById('students-table-body');
+                const message = document.getElementById('no-students-message');
+
+                if (studentsData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+                message.classList.add('hidden');
+                tbody.innerHTML = studentsData.map(student => {
+                    const statusColor = student.feeStatus === 'owing' ? 'text-red-600': 'text-green-600';
+                    const statusText = student.feeStatus.charAt(0).toUpperCase() + student.feeStatus.slice(1);
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.class}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold ${statusColor}">${statusText}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editStudent('${student.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                    <button onclick="deleteStudent('${student.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                    </tr>
+                    `
+                }).join('');
+            }
+            window.editStudent = (studentId) => {
+                const student = studentsData.find(s => s.id === studentId);
+                if (!student) return;
+
+                const classSelect = document.getElementById('student-class');
+                classSelect.innerHTML = '<option value="">-- Select Class --</option>' + classesData.map(c =>
+                    `<option value="${c.name}" ${c.name === student.class ? 'selected': ''}>${c.name}</option>`
+                ).join('');
+
+                document.getElementById('modal-title').textContent = 'Edit Student: ' + student.name;
+                document.getElementById('student-id-field').value = student.id;
+                document.getElementById('student-name').value = student.name;
+                document.getElementById('student-modal').classList.remove('hidden');
+            }
+
+            window.exportGrades = (studentId) => {
+                const student = studentsData.find(s => s.id === studentId);
+                if (!student) return;
+
+                const filterSemester = document.getElementById('gs-filter-semester')?.value || '';
+                const filterPeriod = document.getElementById('gs-filter-period')?.value || '';
+                let studentGrades = gradesData.filter(g => g.studentId === studentId);
+                if (filterSemester) studentGrades = studentGrades.filter(g => g.semester === filterSemester);
+                if (filterPeriod) studentGrades = studentGrades.filter(g => g.period === filterPeriod);
+
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Subject,Period,Semester,Score,Type,Date\n";
+                studentGrades.forEach(g => {
+                    csvContent += `${g.subject},${g.period},${g.semester},${g.score},${g.type},${g.date}\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `${student.name}_Grades.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showNotification('Grades exported successfully!', 'success');
+            };
+
+            window.deleteStudent = (studentId) => {
+                if (confirm('Are you sure you want to delete this student record? This will also remove all associated grades and financial records.')) {
+                    studentsData = studentsData.filter(s => s.id !== studentId);
+                    gradesData = gradesData.filter(g => g.studentId !== studentId);
+                    saveStudents();
+                    saveGrades();
+                    loadContent('students');
+                    loadContent('dashboard');
+                }
+            }
+            function handleStudentFormSubmit(e) {
+                e.preventDefault();
+                const idField = document.getElementById('student-id-field').value;
+                const name = document.getElementById('student-name').value.trim();
+                const studentClass = document.getElementById('student-class').value;
+
+                if (!name || !studentClass) return;
+
+                if (idField) {
+                    const index = studentsData.findIndex(s => s.id === idField);
+                    if (index !== -1) {
+                        studentsData[index].name = name;
+                        studentsData[index].class = studentClass;
+                    }
+                } else {
+                    studentsData.push({
+                        id: 'S' + Date.now().toString().slice(-6), name, class: studentClass, feeStatus: 'owing', payments: []
+                    });
+                }
+                saveStudents();
+                document.getElementById('student-modal').classList.add('hidden');
+                loadContent('students');
+                loadContent('dashboard');
+            }
+            function attachStudentListeners() {
+                document.getElementById('add-student-btn')?.addEventListener('click', () => {
+                    document.getElementById('modal-title').textContent = 'Add New Student';
+                    document.getElementById('student-form').reset();
+                    document.getElementById('student-id-field').value = '';
+                    const classSelect = document.getElementById('student-class');
+                    classSelect.innerHTML = '<option value="">-- Select Class --</option>' + classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                    document.getElementById('student-modal').classList.remove('hidden');
+                });
+                document.getElementById('close-modal-btn')?.addEventListener('click', () => document.getElementById('student-modal').classList.add('hidden'));
+                document.getElementById('student-form')?.addEventListener('submit', handleStudentFormSubmit);
+            }
+
+            // --- SCHEDULE MANAGEMENT FUNCTIONS ---
+
+            function renderSchedulesTable() {
+                const tbody = document.getElementById('schedules-table-body');
+                const message = document.getElementById('no-schedules-message');
+
+                if (schedulesData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+                message.classList.add('hidden');
+                tbody.innerHTML = schedulesData.map(schedule => {
+                    const teacher = teachersData.find(t => t.id === schedule.teacherId);
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${schedule.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${schedule.class}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${schedule.day}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${schedule.time}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${schedule.subject}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${teacher ? teacher.name: 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editSchedule('${schedule.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                    <button onclick="deleteSchedule('${schedule.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+
+            window.editSchedule = (scheduleId) => {
+                const schedule = schedulesData.find(s => s.id === scheduleId);
+                if (!schedule) return;
+
+                document.getElementById('schedule-modal-title').textContent = 'Edit Schedule';
+                document.getElementById('schedule-id-field').value = schedule.id;
+                document.getElementById('schedule-class').value = schedule.class;
+                document.getElementById('schedule-day').value = schedule.day;
+                document.getElementById('schedule-time').value = schedule.time;
+                document.getElementById('schedule-subject').value = schedule.subject;
+                document.getElementById('schedule-teacher').value = schedule.teacherId;
+                document.getElementById('schedule-modal').classList.remove('hidden');
+            };
+
+            window.deleteSchedule = (scheduleId) => {
+                if (confirm('Are you sure you want to delete this schedule entry?')) {
+                    schedulesData = schedulesData.filter(s => s.id !== scheduleId);
+                    saveSchedules();
+                    loadContent('schedules');
+                    loadContent('dashboard');
+                }
+            };
+
+            function validateSchedule(schedule) {
+                // Check for time conflicts for the same class, day, and time
+                const conflict = schedulesData.some(s =>
+                    s.id !== schedule.id &&
+                    s.class === schedule.class &&
+                    s.day === schedule.day &&
+                    s.time === schedule.time
+                );
+                if (conflict) {
+                    alert('Schedule conflict detected: This class already has a schedule at this time and day.');
+                    return false;
+                }
+
+                // Validate teacher assignment: Ensure teacher is assigned to teach the subject for the class
+                const teacher = teachersData.find(t => t.id === schedule.teacherId);
+                if (!teacher || !teacher.assignments.some(a => a.class === schedule.class && a.subject === schedule.subject)) {
+                    alert('Invalid teacher assignment: The selected teacher is not assigned to teach this subject for this class.');
+                    return false;
+                }
+
+                return true;
+            }
+
+            function handleScheduleFormSubmit(e) {
+                e.preventDefault();
+                const idField = document.getElementById('schedule-id-field').value;
+                const className = document.getElementById('schedule-class').value;
+                const day = document.getElementById('schedule-day').value;
+                const time = document.getElementById('schedule-time').value.trim();
+                const subject = document.getElementById('schedule-subject').value;
+                const teacherId = document.getElementById('schedule-teacher').value;
+
+                if (!className || !day || !time || !subject || !teacherId) {
+                    alert('Please fill out all schedule fields.');
+                    return;
+                }
+
+                // Validate time format (e.g., 08:00-09:00)
+                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                if (!timeRegex.test(time)) {
+                    alert('Please enter a valid time format (e.g., 08:00-09:00).');
+                    return;
+                }
+
+                const schedule = {
+                    id: idField || 'SCH' + Date.now().toString().slice(-6),
+                    class: className,
+                    day,
+                    time,
+                    subject,
+                    teacherId
+                };
+
+                if (!validateSchedule(schedule)) return;
+
+                if (idField) {
+                    const index = schedulesData.findIndex(s => s.id === idField);
+                    if (index !== -1) {
+                        schedulesData[index] = schedule;
+                    }
+                } else {
+                    schedulesData.push(schedule);
+                }
+                saveSchedules();
+                document.getElementById('schedule-modal').classList.add('hidden');
+                document.getElementById('schedule-form').reset();
+                loadContent('schedules');
+                loadContent('dashboard');
+            }
+
+            window.viewClassSchedule = (className) => {
+                const schedules = schedulesData.filter(s => s.class === className);
+                const modal = document.getElementById('schedule-view-modal');
+                const title = document.getElementById('schedule-view-modal-title');
+                const tbody = document.getElementById('schedule-view-table-body');
+                const message = document.getElementById('sv-no-schedules-message');
+
+                title.textContent = `Schedule for ${className}`;
+
+                if (schedules.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                } else {
+                    message.classList.add('hidden');
+                    tbody.innerHTML = schedules
+                    .sort((a, b) => {
+                        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                        const dayA = days.indexOf(a.day);
+                        const dayB = days.indexOf(b.day);
+                        if (dayA !== dayB) return dayA - dayB;
+                        return a.time.localeCompare(b.time);
+                    })
+                    .map(schedule => {
+                        const teacher = teachersData.find(t => t.id === schedule.teacherId);
+                        return `
+                        <tr>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${schedule.day}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${schedule.time}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${schedule.subject}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${teacher ? teacher.name: 'N/A'}</td>
+                        </tr>
+                        `;
+                    }).join('');
+                }
+                modal.classList.remove('hidden');
+            };
+
+            function attachScheduleListeners() {
+                document.getElementById('add-schedule-btn')?.addEventListener('click',
+                    () => {
+                        document.getElementById('schedule-modal-title').textContent = 'Add New Schedule';
+                        document.getElementById('schedule-form').reset();
+                        document.getElementById('schedule-id-field').value = '';
+                        document.getElementById('schedule-modal').classList.remove('hidden');
+                    });
+                document.getElementById('close-schedule-modal-btn')?.addEventListener('click',
+                    () => {
+                        document.getElementById('schedule-modal').classList.add('hidden');
+                    });
+                document.getElementById('schedule-form')?.addEventListener('submit',
+                    handleScheduleFormSubmit);
+                document.getElementById('close-schedule-view-modal-btn')?.addEventListener('click',
+                    () => {
+                        document.getElementById('schedule-view-modal').classList.add('hidden');
+                    });
+                document.getElementById('cancel-schedule-view-modal-btn')?.addEventListener('click',
+                    () => {
+                        document.getElementById('schedule-view-modal').classList.add('hidden');
+                    });
+            }
+
+
+            // --- REFACTORED TEACHER CRUD FUNCTIONS ---
+
+            function renderTeachersTable() {
+                const tbody = document.getElementById('teachers-table-body');
+                const message = document.getElementById('no-teachers-message');
+
+                if (teachersData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+                message.classList.add('hidden');
+                tbody.innerHTML = teachersData.map(teacher => {
+                    const assignmentsText = teacher.assignments.map(a => `${a.class} (${a.subject})`).join(', ') || 'None';
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${teacher.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${teacher.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${assignmentsText}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${teacher.sponsorClass || 'None'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editTeacher('${teacher.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                    <button onclick="deleteTeacher('${teacher.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                    </tr>
+                    `
+                }).join('');
+            }
+            window.editTeacher = (teacherId) => {
+                const teacher = teachersData.find(t => t.id === teacherId);
+                if (!teacher) return;
+
+                document.getElementById('teacher-modal-title').textContent = 'Edit Teacher: ' + teacher.name;
+                document.getElementById('teacher-id-field').value = teacher.id;
+                document.getElementById('teacher-name').value = teacher.name;
+
+                const assignmentsContainer = document.getElementById('teacher-assignments-container');
+                assignmentsContainer.innerHTML = '';
+                if (teacher.assignments.length > 0) {
+                    teacher.assignments.forEach(assignment => addAssignmentRow(assignment));
+                } else {
+                    addAssignmentRow(); // Add one empty row if none exist
+                }
+
+                const sponsorCheckbox = document.getElementById('teacher-sponsor-checkbox');
+                const sponsorSection = document.getElementById('sponsor-class-section');
+                const sponsorSelect = document.getElementById('sponsor-class-select');
+
+                sponsorCheckbox.checked = !!teacher.sponsorClass;
+                sponsorSection.classList.toggle('hidden', !sponsorCheckbox.checked);
+                sponsorSelect.value = teacher.sponsorClass || '';
+
+                document.getElementById('teacher-modal').classList.remove('hidden');
+            };
+            window.deleteTeacher = (teacherId) => {
+                const teacher = teachersData.find(t => t.id === teacherId);
+                if (teacher && (teacher.assignments.length > 0 || teacher.sponsorClass || schedulesData.some(s => s.teacherId === teacherId))) {
+                    alert('Cannot delete teacher. They are still assigned to classes, as a sponsor, or in schedules. Please remove all assignments and schedules first.');
+                    return;
+                }
+                if (confirm('Are you sure you want to delete this teacher record?')) {
+                    teachersData = teachersData.filter(t => t.id !== teacherId);
+                    saveTeachers();
+                    loadContent('teachers');
+                    loadContent('dashboard');
+                }
+            };
+            function handleTeacherFormSubmit(e) {
+                e.preventDefault();
+                const idField = document.getElementById('teacher-id-field').value;
+                const name = document.getElementById('teacher-name').value.trim();
+                if (!name) {
+                    alert('Please enter a teacher name.'); return;
+                }
+
+                const assignments = [];
+                const assignmentRows = document.querySelectorAll('.assignment-row');
+                assignmentRows.forEach(row => {
+                    const classVal = row.querySelector('.assignment-class').value;
+                    const subjectVal = row.querySelector('.assignment-subject').value;
+                    if (classVal && subjectVal) {
+                        assignments.push({
+                            class: classVal, subject: subjectVal
+                        });
+                    }
+                });
+
+                const isSponsor = document.getElementById('teacher-sponsor-checkbox').checked;
+                const sponsorClass = document.getElementById('sponsor-class-select').value;
+                if (isSponsor && !sponsorClass) {
+                    alert('Please select a class to sponsor.');
+                    return;
+                }
+                const finalSponsorClass = isSponsor ? sponsorClass: '';
+
+                if (idField) {
+                    const index = teachersData.findIndex(t => t.id === idField);
+                    if (index !== -1) {
+                        teachersData[index] = {
+                            ...teachersData[index],
+                            name,
+                            assignments,
+                            sponsorClass: finalSponsorClass
+                        };
+                    }
+                } else {
+                    teachersData.push({
+                        id: 'T' + Date.now().toString().slice(-6), name, assignments, sponsorClass: finalSponsorClass, salary: 0, salaryPayments: []
+                    });
+                }
+
+                saveTeachers();
+                document.getElementById('teacher-modal').classList.add('hidden');
+                loadContent('teachers');
+                loadContent('dashboard');
+            }
+            function addAssignmentRow(assignment = {}) {
+                const container = document.getElementById('teacher-assignments-container');
+                const row = document.createElement('div');
+                row.className = 'assignment-row flex items-center gap-2';
+
+                const classOptions = classesData.map(c => `<option value="${c.name}" ${assignment.class === c.name ? 'selected': ''}>${c.name}</option>`).join('');
+                const subjectOptions = subjectsData.map(s => `<option value="${s.name}" ${assignment.subject === s.name ? 'selected': ''}>${s.name}</option>`).join('');
+
+                row.innerHTML = `
+                <select class="assignment-class block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                <option value="">-- Select Class --</option>
+                ${classOptions}
+                </select>
+                <select class="assignment-subject block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                <option value="">-- Select Subject --</option>
+                ${subjectOptions}
+                </select>
+                <button type="button" class="remove-assignment-btn text-red-500 hover:text-red-700 p-2">&times;</button>
+                `;
+                container.appendChild(row);
+
+                row.querySelector('.remove-assignment-btn').addEventListener('click', () => row.remove());
+            }
+            function attachTeacherListeners() {
+                document.getElementById('add-teacher-btn')?.addEventListener('click', () => {
+                    document.getElementById('teacher-modal-title').textContent = 'Add New Teacher';
+                    document.getElementById('teacher-form').reset();
+                    document.getElementById('teacher-id-field').value = '';
+
+                    document.getElementById('teacher-assignments-container').innerHTML = '';
+                    addAssignmentRow(); // Add one empty row for new teacher
+
+                    document.getElementById('sponsor-class-section').classList.add('hidden');
+                    document.getElementById('teacher-sponsor-checkbox').checked = false;
+                    document.getElementById('teacher-modal').classList.remove('hidden');
+                });
+
+                document.getElementById('close-teacher-modal-btn')?.addEventListener('click', () => document.getElementById('teacher-modal').classList.add('hidden'));
+                document.getElementById('teacher-form')?.addEventListener('submit', handleTeacherFormSubmit);
+                document.getElementById('add-assignment-btn')?.addEventListener('click', () => addAssignmentRow());
+                document.getElementById('teacher-sponsor-checkbox')?.addEventListener('change', (e) => {
+                    document.getElementById('sponsor-class-section').classList.toggle('hidden', !e.target.checked);
+                });
+            }
+
+            // --- FINANCE & FEES FUNCTIONS ---
+            function calculateTotalDue(student) {
+                const studentClass = classesData.find(c => c.name === student.class);
+                const tuition = studentClass ? (studentClass.tuitionFee || 0): 0;
+                const requiredFees = feesData.filter(f => f.required).reduce((sum, f) => sum + f.amount, 0);
+                return tuition + requiredFees;
+            }
+
+            function calculateTotalPaid(student) {
+                return student.payments.reduce((sum, p) => sum + p.amount, 0);
+            }
+
+            function renderStudentFinanceTable() {
+                const tbody = document.getElementById('student-finance-table-body');
+                const message = document.getElementById('no-student-finance-message');
+
+                if (studentsData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+                message.classList.add('hidden');
+
+                // Re-calculate fee status automatically before rendering
+                studentsData.forEach(student => {
+                    const totalDue = calculateTotalDue(student);
+                    const totalPaid = calculateTotalPaid(student);
+                    student.feeStatus = (totalPaid >= totalDue) ? 'cleared': 'owing';
+                });
+                saveStudents(); // Save the potentially updated fee statuses
+
+                tbody.innerHTML = studentsData.map(student => {
+                    const totalDue = calculateTotalDue(student);
+                    const totalPaid = calculateTotalPaid(student);
+                    const balance = totalDue - totalPaid;
+                    const statusColor = student.feeStatus === 'owing' ? 'bg-red-100 text-red-800': 'bg-green-100 text-green-800';
+                    const statusText = student.feeStatus.charAt(0).toUpperCase() + student.feeStatus.slice(1);
+                    const toggleActionText = student.feeStatus === 'owing' ? 'Mark as Cleared': 'Mark as Owing';
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.class}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${totalDue.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${totalPaid.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">${balance.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="openPaymentModal('${student.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3">Manage Payments</button>
+                    <button onclick="toggleFeeStatus('${student.id}')" class="text-gray-600 hover:text-gray-900 mr-3">${toggleActionText}</button>
+                    <button onclick="printReceipt('${student.id}')" class="text-green-600 hover:text-green-900">Print Receipt</button>
+                    </td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+
+            window.toggleFeeStatus = (studentId) => {
+                const studentIndex = studentsData.findIndex(s => s.id === studentId);
+                if (studentIndex === -1) return;
+
+                const currentStatus = studentsData[studentIndex].feeStatus;
+
+                // Allow admin override only if the balance is the determining factor
+                // If balance is zero, status is already 'cleared' and override is for 'owing'
+                // If balance is non-zero, status is 'owing' and override is for 'cleared' (waiver)
+
+                const totalDue = calculateTotalDue(studentsData[studentIndex]);
+                const totalPaid = calculateTotalPaid(studentsData[studentIndex]);
+                const balance = totalDue - totalPaid;
+
+                if (balance <= 0 && currentStatus === 'cleared') {
+                    // Force to owing even though paid (e.g., payment reversal, partial refund)
+                    if (!confirm('Warning: This student appears paid in full. Are you sure you want to manually mark them as "Owing"?')) return;
+                    studentsData[studentIndex].feeStatus = 'owing';
+                } else if (balance > 0 && currentStatus === 'owing') {
+                    // Force to cleared even though owing (e.g., fee waiver)
+                    if (!confirm('Warning: This student has an outstanding balance. Are you sure you want to manually mark them as "Cleared" (Fee Waiver)?')) return;
+                    studentsData[studentIndex].feeStatus = 'cleared';
+                }
+
+                saveStudents();
+                loadContent('finance');
+            }
+
+            window.openPaymentModal = (studentId) => {
+                const student = studentsData.find(s => s.id === studentId);
+                if (!student) return;
+
+                const totalDue = calculateTotalDue(student);
+                const totalPaid = calculateTotalPaid(student);
+                const balance = totalDue - totalPaid;
+
+                document.getElementById('payment-modal-title').textContent = `Manage Payments for: ${student.name} (${student.id})`;
+                document.getElementById('payment-student-id').value = studentId;
+                document.getElementById('pm-total-due').textContent = `L$ ${totalDue.toLocaleString()}`;
+                document.getElementById('pm-total-paid').textContent = `L$ ${totalPaid.toLocaleString()}`;
+                document.getElementById('pm-balance').textContent = `L$ ${balance.toLocaleString()}`;
+
+                renderPaymentHistory(student);
+                document.getElementById('payment-modal').classList.remove('hidden');
+            }
+
+            function renderPaymentHistory(student) {
+                const tbody = document.getElementById('payment-history-body');
+                if (!student.payments || student.payments.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No payment history found.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = student.payments.map(p => `
+                    <tr>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${p.date}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm font-semibold text-gray-800">${p.amount.toLocaleString()}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${p.description}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">
+                    <button onclick="deletePayment('${student.id}', '${p.id}')" class="text-red-500 hover:text-red-700">Delete</button>
+                    </td>
+                    </tr>
+                    `).join('');
+            }
+
+            function handlePaymentFormSubmit(e) {
+                e.preventDefault();
+                const studentId = document.getElementById('payment-student-id').value;
+                const amount = parseFloat(document.getElementById('payment-amount').value);
+                const description = document.getElementById('payment-description').value.trim();
+
+                if (!studentId || isNaN(amount) || amount <= 0) {
+                    alert('Please enter a valid amount.'); return;
+                }
+                const studentIndex = studentsData.findIndex(s => s.id === studentId);
+                if (studentIndex === -1) return;
+
+                const newPayment = {
+                    id: 'P' + Date.now(),
+                    amount: amount,
+                    description: description || 'Payment Received',
+                    date: new Date().toLocaleDateString()
+                };
+                studentsData[studentIndex].payments.push(newPayment);
+
+                // Automatic fee status update
+                const totalDue = calculateTotalDue(studentsData[studentIndex]);
+                const totalPaid = calculateTotalPaid(studentsData[studentIndex]);
+                studentsData[studentIndex].feeStatus = (totalPaid >= totalDue) ? 'cleared': 'owing';
+
+                saveStudents();
+                document.getElementById('payment-form').reset();
+                openPaymentModal(studentId); // Re-render modal to show changes
+            }
+
+            window.deletePayment = (studentId, paymentId) => {
+                if (!confirm('Are you sure you want to delete this payment record?')) return;
+                const studentIndex = studentsData.findIndex(s => s.id === studentId);
+                if (studentIndex === -1) return;
+
+                studentsData[studentIndex].payments = studentsData[studentIndex].payments.filter(p => p.id !== paymentId);
+
+                // Automatic fee status update
+                const totalDue = calculateTotalDue(studentsData[studentIndex]);
+                const totalPaid = calculateTotalPaid(studentsData[studentIndex]);
+                studentsData[studentIndex].feeStatus = (totalPaid >= totalDue) ? 'cleared': 'owing';
+
+                saveStudents();
+                openPaymentModal(studentId); // Re-render modal to show changes
+            }
+
+            window.printReceipt = (studentId) => {
+                const student = studentsData.find(s => s.id === studentId);
+                if (!student) return;
+
+                const studentClass = classesData.find(c => c.name === student.class);
+                const tuition = studentClass ? studentClass.tuitionFee: 0;
+                const requiredFees = feesData.filter(f => f.required);
+                const totalDue = calculateTotalDue(student);
+                const totalPaid = calculateTotalPaid(student);
+                const balance = totalDue - totalPaid;
+                const receiptHTML = `
+                <div class="max-w-3xl mx-auto p-6 bg-white">
+                <header class="text-center mb-8 border-b-2 pb-4">
+                <h1 class="text-3xl font-bold text-gray-800">Liberia High School</h1>
+                <p class="text-gray-600">Official Student Receipt</p>
+                </header>
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                <div>
+                <h2 class="text-lg font-semibold text-gray-700">Student Information</h2>
+                <p><strong>Name:</strong> ${student.name}</p>
+                <p><strong>ID:</strong> ${student.id}</p>
+                <p><strong>Class:</strong> ${student.class}</p>
+                </div>
+                <div class="text-right">
+                <h2 class="text-lg font-semibold text-gray-700">Receipt Details</h2>
+                <p><strong>Date Issued:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Academic Year:</strong> ${settingsData.academicYear}</p>
+                </div>
+                </div>
+                <h2 class="text-lg font-semibold text-gray-700 mb-2">Fee Breakdown</h2>
+                <table class="w-full mb-8">
+                <thead class="border-b"><tr><th class="text-left py-2">Item</th><th class="text-right py-2">Amount (L$)</th></tr></thead>
+                <tbody>
+                <tr class="border-b"><td class="py-2">Tuition (${student.class})</td><td class="text-right py-2">${tuition.toLocaleString()}</td></tr>
+                ${requiredFees.map(f => `<tr class="border-b"><td class="py-2">${f.name}</td><td class="text-right py-2">${f.amount.toLocaleString()}</td></tr>`).join('')}
+                </tbody>
+                <tfoot><tr class="font-bold"><td class="text-right py-3">Total Due:</td><td class="text-right py-3">${totalDue.toLocaleString()}</td></tr></tfoot>
+                </table>
+                <h2 class="text-lg font-semibold text-gray-700 mb-2">Payment Summary</h2>
+                <table class="w-full mb-8">
+                <thead class="border-b"><tr><th class="text-left py-2">Date</th><th class="text-left py-2">Description</th><th class="text-right py-2">Amount Paid (L$)</th></tr></thead>
+                <tbody>
+                ${student.payments.length > 0 ? student.payments.map(p => `<tr class="border-b"><td class="py-2">${p.date}</td><td class="py-2">${p.description}</td><td class="text-right py-2">${p.amount.toLocaleString()}</td></tr>`).join(''): `<tr><td colspan="3" class="py-2 text-center text-gray-500">No payments recorded.</td></tr>`}
+                </tbody>
+                <tfoot>
+                <tr class="font-bold"><td colspan="2" class="text-right py-3">Total Paid:</td><td class="text-right py-3">${totalPaid.toLocaleString()}</td></tr>
+                <tr class="font-bold text-xl text-blue-700 bg-gray-100"><td colspan="2" class="text-right py-3 pr-2">Balance Due:</td><td class="text-right py-3 pr-2">L$ ${balance.toLocaleString()}</td></tr>
+                </tfoot>
+                </table>
+                <footer class="text-center text-sm text-gray-500 mt-12 pt-4 border-t"><p>Thank you for your payment.</p><p>Generated on: ${new Date().toLocaleString()}</p></footer>
+                </div>
+                `;
+                document.getElementById('printable-receipt').innerHTML = receiptHTML;
+                window.print();
+            }
+
+            function renderFeesTable() {
+                const tbody = document.getElementById('fees-table-body');
+                const message = document.getElementById('no-fees-message');
+                if (feesData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden'); return;
+                }
+                message.classList.add('hidden');
+                tbody.innerHTML = feesData.map(fee => `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${fee.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${fee.amount.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${fee.required ? 'Yes': 'No'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editFee('${fee.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                    <button onclick="deleteFee('${fee.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                    </tr>
+                    `).join('');
+            }
+            window.editFee = (feeId) => {
+                const fee = feesData.find(f => f.id === feeId);
+                if (!fee) return;
+                document.getElementById('fee-modal-title').textContent = 'Edit Fee: ' + fee.name;
+                document.getElementById('fee-id-field').value = fee.id;
+                document.getElementById('fee-name').value = fee.name;
+                document.getElementById('fee-amount').value = fee.amount;
+                document.getElementById('fee-required').checked = fee.required;
+                document.getElementById('fee-modal').classList.remove('hidden');
+            }
+            window.deleteFee = (feeId) => {
+                if (confirm('Are you sure you want to delete this Fee Type?')) {
+                    feesData = feesData.filter(f => f.id !== feeId);
+                    saveFees();
+                    loadContent('finance');
+                    loadContent('dashboard');
+                }
+            }
+            function handleFeeFormSubmit(e) {
+                e.preventDefault();
+                const idField = document.getElementById('fee-id-field').value;
+                const name = document.getElementById('fee-name').value.trim();
+                const amount = parseFloat(document.getElementById('fee-amount').value);
+                const required = document.getElementById('fee-required').checked;
+
+                if (!name || isNaN(amount) || amount <= 0) return;
+                if (idField) {
+                    const index = feesData.findIndex(f => f.id === idField);
+                    if (index !== -1) {
+                        feesData[index] = {
+                            id: idField,
+                            name,
+                            amount,
+                            required
+                        };
+                    }
+                } else {
+                    feesData.push({
+                        id: 'F' + Date.now().toString().slice(-6), name, amount, required
+                    });
+                }
+                saveFees();
+                document.getElementById('fee-modal').classList.add('hidden');
+                loadContent('finance');
+                loadContent('dashboard');
+            }
+
+            // --- TEACHER FINANCE FUNCTIONS ---
+
+            function calculateTeacherYtdPaid(teacher) {
+                return teacher.salaryPayments.reduce((sum, p) => sum + p.amount, 0);
+            }
+
+            function renderTeacherFinanceTable() {
+                const tbody = document.getElementById('teacher-finance-table-body');
+                const message = document.getElementById('no-teacher-finance-message');
+
+                if (!teachersData || teachersData.length === 0) {
+                    tbody.innerHTML = '';
+                    message.classList.remove('hidden');
+                    return;
+                }
+                message.classList.add('hidden');
+                tbody.innerHTML = teachersData.map(teacher => {
+                    const ytdPaid = calculateTeacherYtdPaid(teacher);
+                    const salary = teacher.salary || 0;
+                    return `
+                    <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${teacher.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">${salary.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${ytdPaid.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="openSalaryModal('${teacher.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3">Manage Salary</button>
+                    </td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+
+            window.openSalaryModal = (teacherId) => {
+                const teacher = teachersData.find(t => t.id === teacherId);
+                if (!teacher) return;
+
+                const monthlySalary = teacher.salary || 0;
+                const ytdPaid = calculateTeacherYtdPaid(teacher);
+
+                document.getElementById('salary-modal-title').textContent = `Manage Salary for: ${teacher.name} (${teacher.id})`;
+                document.getElementById('salary-teacher-id').value = teacherId;
+                document.getElementById('sm-monthly-salary').textContent = `L$ ${monthlySalary.toLocaleString()}`;
+                document.getElementById('sm-ytd-paid').textContent = `L$ ${ytdPaid.toLocaleString()}`;
+                document.getElementById('new-salary-amount').value = monthlySalary;
+
+                renderSalaryHistory(teacher);
+                document.getElementById('salary-modal').classList.remove('hidden');
+            }
+
+            function renderSalaryHistory(teacher) {
+                const tbody = document.getElementById('salary-history-body');
+                if (!teacher.salaryPayments || teacher.salaryPayments.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No salary payment history found.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = teacher.salaryPayments.map(p => `
+                    <tr>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${p.date}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm font-semibold text-gray-800">${p.amount.toLocaleString()}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${p.description}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">
+                    <button onclick="deleteSalaryPayment('${teacher.id}', '${p.id}')" class="text-red-500 hover:text-red-700">Delete</button>
+                    </td>
+                    </tr>
+                    `).join('');
+            }
+
+            function handleSalaryUpdateFormSubmit(e) {
+                e.preventDefault();
+                const teacherId = document.getElementById('salary-teacher-id').value;
+                const newSalary = parseFloat(document.getElementById('new-salary-amount').value);
+
+                if (!teacherId || isNaN(newSalary) || newSalary < 0) {
+                    alert('Please enter a valid salary amount.'); return;
+                }
+                const teacherIndex = teachersData.findIndex(t => t.id === teacherId);
+                if (teacherIndex === -1) return;
+
+                teachersData[teacherIndex].salary = newSalary;
+                saveTeachers();
+                openSalaryModal(teacherId);
+            }
+
+            function handlePayrollFormSubmit(e) {
+                e.preventDefault();
+                const teacherId = document.getElementById('salary-teacher-id').value;
+                const amount = parseFloat(document.getElementById('payroll-amount').value);
+                const description = document.getElementById('payroll-description').value.trim();
+
+                if (!teacherId || isNaN(amount) || amount <= 0) {
+                    alert('Please enter a valid payment amount.'); return;
+                }
+                const teacherIndex = teachersData.findIndex(t => t.id === teacherId);
+                if (teacherIndex === -1) return;
+
+                const newPayment = {
+                    id: 'SAL' + Date.now(),
+                    amount: amount,
+                    description: description || 'Salary Payment',
+                    date: new Date().toLocaleDateString()
+                };
+                teachersData[teacherIndex].salaryPayments.push(newPayment);
+
+                saveTeachers();
+                document.getElementById('payroll-form').reset();
+                openSalaryModal(teacherId);
+            }
+
+            window.deleteSalaryPayment = (teacherId, paymentId) => {
+                if (!confirm('Are you sure you want to delete this salary payment record?')) return;
+                const teacherIndex = teachersData.findIndex(t => t.id === teacherId);
+                if (teacherIndex === -1) return;
+
+                teachersData[teacherIndex].salaryPayments = teachersData[teacherIndex].salaryPayments.filter(p => p.id !== paymentId);
+                saveTeachers();
+                openSalaryModal(teacherId);
+            }
+
+            // --- END TEACHER FINANCE FUNCTIONS ---
+
+            function attachFeeListeners() {
+                document.getElementById('add-fee-btn')?.addEventListener('click', () => {
+                    document.getElementById('fee-modal-title').textContent = 'Add New Fee Type';
+                    document.getElementById('fee-form').reset();
+                    document.getElementById('fee-id-field').value = '';
+                    document.getElementById('fee-modal').classList.remove('hidden');
+                });
+                document.getElementById('close-fee-modal-btn')?.addEventListener('click', () => document.getElementById('fee-modal').classList.add('hidden'));
+                document.getElementById('fee-form')?.addEventListener('submit', handleFeeFormSubmit);
+
+                // Payment Modal Listeners
+                document.getElementById('close-payment-modal-btn')?.addEventListener('click', () => {
+                    document.getElementById('payment-modal').classList.add('hidden');
+                    loadContent('finance');
+                });
+                document.getElementById('payment-form')?.addEventListener('submit', handlePaymentFormSubmit);
+
+                // Salary Modal Listeners (NEW)
+                document.getElementById('close-salary-modal-btn')?.addEventListener('click', () => {
+                    document.getElementById('salary-modal').classList.add('hidden');
+                    loadContent('finance');
+                });
+                document.getElementById('salary-update-form')?.addEventListener('submit', handleSalaryUpdateFormSubmit);
+                document.getElementById('payroll-form')?.addEventListener('submit', handlePayrollFormSubmit);
+            }
+
+            function attachFinanceTabListeners() {
+                const tabButtons = document.querySelectorAll('.tab-button');
+                const tabContents = document.querySelectorAll('.tab-content');
+
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const targetId = e.target.getAttribute('data-target');
+
+                        // Update button styling
+                        tabButtons.forEach(btn => {
+                            btn.classList.remove('border-blue-500', 'text-blue-600');
+                            btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                        });
+                        e.target.classList.add('border-blue-500', 'text-blue-600');
+                        e.target.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+
+                        // Update content visibility
+                        tabContents.forEach(content => {
+                            content.classList.add('hidden');
+                        });
+                        document.getElementById(targetId).classList.remove('hidden');
+                    });
+                });
+            }
+
+            function attachSettingsListeners() {
+                document.getElementById('settings-form')?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    settingsData.academicYear = document.getElementById('academic-year').value.trim();
+                    saveSettings();
+                    const message = document.getElementById('settings-message');
+                    message.classList.remove('hidden');
+                    setTimeout(() => message.classList.add('hidden'), 3000);
+                    loadContent('dashboard');
+                });
+                document.getElementById('clear-data-btn')?.addEventListener('click', () => {
+                    if (confirm('DANGER! This will delete ALL data (Students, Teachers, Classes, Subjects, Fees, Grades, Schedules) stored in your browser. Are you absolutely sure?')) {
+                        localStorage.clear();
+                        window.location.reload();
+                    }
+                });
+            }
+            // --- Initializers and Event Listeners ---
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const contentId = link.getAttribute('data-content');
+                    navLinks.forEach(l => l.classList.remove('active-link'));
+                    link.classList.add('active-link');
+                    loadContent(contentId);
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add('-translate-x-full');
+                    }
+                });
+            });
+
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const modalContainer = document.createElement('div');
+                modalContainer.innerHTML = classModalHTML + classViewModalHTML + studentModalHTML + teacherModalHTML + feeModalHTML + paymentModalHTML + salaryModalHTML + subjectModalHTML + scheduleModalHTML + scheduleViewModalHTML + `
+                <div id="gradesheet-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+                <div class="relative top-10 mx-auto p-8 border shadow-xl rounded-md bg-white modal-content">
+                <div class="flex justify-between items-start mb-4 border-b pb-2">
+                <h3 id="gradesheet-modal-title" class="text-2xl font-bold text-gray-800">Student Grade Sheet</h3>
+                <button id="close-gradesheet-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                <p class="text-lg font-semibold text-gray-700">
+                Student: <span id="gs-student-name" class="font-normal text-gray-900"></span>
+                </p>
+                <p class="text-lg font-semibold text-gray-700">
+                Class: <span id="gs-student-class" class="font-normal text-gray-900"></span>
+                </p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-md">
+                <h4 class="text-xl font-semibold mb-3 border-b pb-2">Grade Summary</h4>
+                <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-100">
+                <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                ${semestersData.map(semester => `
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${semester.name}</th>
+                    `).join('')}
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average</th>
+                </tr>
+                </thead>
+                <tbody id="gradesheet-table-body" class="bg-white divide-y divide-gray-200">
+                </tbody>
+                </table>
+                </div>
+                <p id="gs-no-grades-message" class="text-center py-4 text-gray-500 hidden">
+                No grades recorded for this student.
+                </p>
+                </div>
+                </div>
+                </div>
+                `;
+                document.body.appendChild(modalContainer);
+                loadContent('dashboard');
+            });
+
+            function showNotification(message, type = 'error') {
+                const notification = document.getElementById('notification');
+                const messageEl = document.getElementById('notification-message');
+                notification.classList.remove('bg-red-500', 'bg-green-500');
+                notification.classList.add(type === 'error' ? 'bg-red-500': 'bg-green-500');
+                messageEl.textContent = message;
+                notification.classList.remove('hidden');
+                setTimeout(() => notification.classList.add('hidden'), 3000);
+            }
+        </script>
+        <!-- At the end of the body -->
+        <div id="notification" class="fixed top-4 right-4 bg-red-500 text-white p-4 rounded-md shadow-md hidden">
+            <p id="notification-message"></p>
+        </div>
+    </body>
+</html>
